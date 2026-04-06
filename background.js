@@ -44,7 +44,7 @@ async function setVisualState(enabled) {
       color: enabled ? "#1f7a3f" : "#666666",
     }),
     chrome.action.setTitle({
-      title: `Typingerz JS Runner: ${enabled ? "ON" : "OFF"}`,
+      title: `Typingerz Cheat Runner: ${enabled ? "ON" : "OFF"}`,
     }),
   ]);
 }
@@ -66,7 +66,7 @@ async function injectExternalScript(tabId, url) {
   } catch (error) {
     const message = String(error?.message || error || "");
     if (message.includes("error page")) return;
-    console.error("[Typingerz JS Runner] executeScript failed:", error);
+    console.error("[Typingerz Cheat Runner] executeScript failed:", error);
   }
 }
 
