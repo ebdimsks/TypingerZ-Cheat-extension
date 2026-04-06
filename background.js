@@ -1,9 +1,7 @@
+const DEFAULT_ENABLED = true;
 const STORAGE_KEYS = {
   enabled: "enabled",
 };
-
-const DEFAULT_ENABLED = true;
-const TYPOINGERZ_HOSTS = new Set(["typingerz.com"]);
 
 const ICONS = {
   enabled: {
@@ -23,10 +21,7 @@ const ICONS = {
 function isTypingerzUrl(url) {
   try {
     const { hostname } = new URL(url);
-    return (
-      TYPOINGERZ_HOSTS.has(hostname) ||
-      [...TYPOINGERZ_HOSTS].some((host) => hostname.endsWith(`.${host}`))
-    );
+    return hostname === "typingerz.com" || hostname.endsWith(".typingerz.com");
   } catch {
     return false;
   }
@@ -58,8 +53,9 @@ async function syncVisualState() {
   await setVisualState(await getEnabled());
 }
 
-async function injectExternalScript(tabId) {
+async function injectExternalScript(tabId, url) {
   if (!(await getEnabled())) return;
+  if (!url || !isTypingerzUrl(url)) return;
 
   try {
     await chrome.scripting.executeScript({
@@ -68,6 +64,8 @@ async function injectExternalScript(tabId) {
       world: "MAIN",
     });
   } catch (error) {
+    const message = String(error?.message || error || "");
+    if (message.includes("error page")) return;
     console.error("[Typingerz JS Runner] executeScript failed:", error);
   }
 }
@@ -93,15 +91,16 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 chrome.action.onClicked.addListener(async (tab) => {
   const enabled = await toggleEnabledState();
+
   if (enabled && tab?.id && tab.url && isTypingerzUrl(tab.url)) {
-    await injectExternalScript(tab.id);
+    await injectExternalScript(tab.id, tab.url);
   }
 });
 
 function handleNavigation(details) {
   if (details.frameId !== 0) return;
   if (!details.url || !isTypingerzUrl(details.url)) return;
-  injectExternalScript(details.tabId);
+  injectExternalScript(details.tabId, details.url);
 }
 
 chrome.webNavigation.onCompleted.addListener(handleNavigation);

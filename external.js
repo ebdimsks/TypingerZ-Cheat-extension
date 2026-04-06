@@ -1,63 +1,106 @@
-function tyTex(text) {
-  let typeTarget = text.split("");
+(() => {
+  "use strict";
 
-  typeTarget.forEach((character) => {
-    if (character === "n") {
-      let customKeyEvent = new KeyboardEvent('keydown', {
-        key: character,
-        code: "KeyN",
-        location: 0,
-        ctrlKey: false,
-        shiftKey: false,
-        altKey: false,
-        metaKey: false,
-        repeat: false,
-        isComposing: false,
-        charCode: 0,
-        keyCode: 78,
-        which: 78,
-      });
+  const TARGET_ID = "mondaifield";
+  let lastTypedText = "";
+  let observerStarted = false;
 
-      document.dispatchEvent(customKeyEvent);
+  function dispatchKey(type, key, code) {
+    const event = new KeyboardEvent(type, {
+      key,
+      code,
+      location: 0,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      repeat: false,
+      bubbles: true,
+      cancelable: true,
+    });
 
-      customKeyEvent = new KeyboardEvent('keyup', {
-        key: character,
-        code: "KeyN",
-        location: 0,
-        ctrlKey: false,
-        shiftKey: false,
-        altKey: false,
-        metaKey: false,
-        repeat: false,
-        isComposing: false,
-        charCode: 0,
-        keyCode: 78,
-        which: 78,
-      });
+    document.dispatchEvent(event);
+  }
 
-      document.dispatchEvent(customKeyEvent);
-    } else {
-      let keyEvent = new KeyboardEvent('keydown', {
-        key: character,
-        code: `Key${character.toUpperCase()}`
-      });
-
-      document.dispatchEvent(keyEvent);
-
-      let keyUpEvent = new KeyboardEvent('keyup', {
-        key: character,
-        code: `Key${character.toUpperCase()}`
-      });
-
-      document.dispatchEvent(keyUpEvent);
+  function getKeyInfo(character) {
+    if (character === " ") {
+      return { key: " ", code: "Space" };
     }
-  });
-}
+    if (character === "\n") {
+      return { key: "Enter", code: "Enter" };
+    }
+    if (/^[a-z]$/i.test(character)) {
+      return { key: character, code: `Key${character.toUpperCase()}` };
+    }
+    if (/^[0-9]$/.test(character)) {
+      return { key: character, code: `Digit${character}` };
+    }
+    return { key: character, code: "" };
+  }
 
+  function tyTex(text) {
+    if (!text || text === lastTypedText) return;
+    lastTypedText = text;
 
-function handMond() {
-  let textContent = document.getElementById("mondaifield").textContent;
-  tyTex(textContent);
-}
+    for (const character of text.split("")) {
+      const { key, code } = getKeyInfo(character);
+      dispatchKey("keydown", key, code);
+      dispatchKey("keyup", key, code);
+    }
+  }
 
-setInterval(handMond, 10); 
+  function handMond() {
+    const target = document.getElementById(TARGET_ID);
+    if (!target) return;
+
+    const textContent = target.textContent || "";
+    if (!textContent.trim()) return;
+
+    tyTex(textContent);
+  }
+
+  function startObserver() {
+    if (observerStarted) return;
+    observerStarted = true;
+
+    const observer = new MutationObserver(() => {
+      handMond();
+    });
+
+    const attach = () => {
+      const target = document.getElementById(TARGET_ID);
+      if (!target) return false;
+
+      observer.observe(target, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+
+      return true;
+    };
+
+    if (attach()) {
+      handMond();
+      return;
+    }
+
+    const bootObserver = new MutationObserver(() => {
+      if (attach()) {
+        bootObserver.disconnect();
+        handMond();
+      }
+    });
+
+    bootObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+  } else {
+    startObserver();
+  }
+})();
