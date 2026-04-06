@@ -39,10 +39,6 @@ async function setVisualState(enabled) {
 
   await Promise.all([
     chrome.action.setIcon({ path: ICONS[state] }),
-    chrome.action.setBadgeText({ text: enabled ? "ON" : "OFF" }),
-    chrome.action.setBadgeBackgroundColor({
-      color: enabled ? "#1f7a3f" : "#666666",
-    }),
     chrome.action.setTitle({
       title: `Typingerz Cheat Runner: ${enabled ? "ON" : "OFF"}`,
     }),
