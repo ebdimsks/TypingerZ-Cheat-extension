@@ -2,11 +2,15 @@
   "use strict";
 
   const TARGET_ID = "mondaifield";
-  const DELAY_MS = 10;
+  const DEBOUNCE_MS = 10;
 
-  let lastTypedText = "";
-  let observerStarted = false;
-  let timer = null;
+  const state = {
+    observer: null,
+    bootObserver: null,
+    timerId: null,
+    started: false,
+    lastEmittedText: "",
+  };
 
   function dispatchKey(type, key, code) {
     const event = new KeyboardEvent(type, {
@@ -26,12 +30,8 @@
   }
 
   function getKeyInfo(character) {
-    if (character === " ") {
-      return { key: " ", code: "Space" };
-    }
-    if (character === "\n") {
-      return { key: "Enter", code: "Enter" };
-    }
+    if (character === " ") return { key: " ", code: "Space" };
+    if (character === "\n") return { key: "Enter", code: "Enter" };
     if (/^[a-z]$/i.test(character)) {
       return { key: character, code: `Key${character.toUpperCase()}` };
     }
@@ -41,11 +41,19 @@
     return { key: character, code: "" };
   }
 
-  function typeText(text) {
-    if (!text || text === lastTypedText) return;
-    lastTypedText = text;
+  function normalizeText(text) {
+    return String(text ?? "").replace(/\r\n/g, "\n");
+  }
 
-    for (const char of text) {
+  function typeText(text) {
+    const normalized = normalizeText(text);
+
+    if (!normalized.trim()) return;
+    if (normalized === state.lastEmittedText) return;
+
+    state.lastEmittedText = normalized;
+
+    for (const char of normalized) {
       const { key, code } = getKeyInfo(char);
       dispatchKey("keydown", key, code);
       dispatchKey("keyup", key, code);
@@ -53,15 +61,22 @@
   }
 
   function scheduleTyping(text) {
-    if (timer) clearTimeout(timer);
+    if (state.timerId !== null) {
+      clearTimeout(state.timerId);
+    }
 
-    timer = setTimeout(() => {
+    state.timerId = setTimeout(() => {
+      state.timerId = null;
       typeText(text);
-    }, DELAY_MS);
+    }, DEBOUNCE_MS);
   }
 
-  function handleTarget() {
-    const el = document.getElementById(TARGET_ID);
+  function getTargetElement() {
+    return document.getElementById(TARGET_ID);
+  }
+
+  function handleTargetChange() {
+    const el = getTargetElement();
     if (!el) return;
 
     const text = el.textContent || "";
@@ -70,44 +85,74 @@
     scheduleTyping(text);
   }
 
-  function startObserver() {
-    if (observerStarted) return;
-    observerStarted = true;
+  function disconnectObservers() {
+    if (state.timerId !== null) {
+      clearTimeout(state.timerId);
+      state.timerId = null;
+    }
 
-    const observer = new MutationObserver(() => {
-      handleTarget();
+    if (state.observer) {
+      state.observer.disconnect();
+      state.observer = null;
+    }
+
+    if (state.bootObserver) {
+      state.bootObserver.disconnect();
+      state.bootObserver = null;
+    }
+  }
+
+  function attachTargetObserver(el) {
+    if (state.observer) return;
+
+    state.observer = new MutationObserver(() => {
+      handleTargetChange();
     });
 
-    const attach = () => {
-      const el = document.getElementById(TARGET_ID);
-      if (!el) return false;
+    state.observer.observe(el, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
 
-      observer.observe(el, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
+  function startObserver() {
+    if (state.started) return;
+    state.started = true;
 
-      return true;
-    };
-
-    if (attach()) {
-      handleTarget();
+    const target = getTargetElement();
+    if (target) {
+      attachTargetObserver(target);
+      handleTargetChange();
       return;
     }
 
-    const bootObserver = new MutationObserver(() => {
-      if (attach()) {
-        bootObserver.disconnect();
-        handleTarget();
+    state.bootObserver = new MutationObserver(() => {
+      const el = getTargetElement();
+      if (!el) return;
+
+      attachTargetObserver(el);
+      if (state.bootObserver) {
+        state.bootObserver.disconnect();
+        state.bootObserver = null;
       }
+
+      handleTargetChange();
     });
 
-    bootObserver.observe(document.documentElement, {
+    state.bootObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      handleTargetChange();
+    }
+  });
+
+  window.addEventListener("beforeunload", disconnectObservers, { once: true });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", startObserver, { once: true });
