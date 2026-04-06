@@ -40,7 +40,7 @@ async function setVisualState(enabled) {
   await Promise.all([
     chrome.action.setIcon({ path: ICONS[state] }),
     chrome.action.setTitle({
-      title: `Typingerz Cheat Runner: ${enabled ? "ON" : "OFF"}`,
+      title: `TypingerZ Cheat Runner: ${enabled ? "ON" : "OFF"}`,
     }),
   ]);
 }
@@ -62,7 +62,7 @@ async function injectExternalScript(tabId, url) {
   } catch (error) {
     const message = String(error?.message || error || "");
     if (message.includes("error page")) return;
-    console.error("[Typingerz Cheat Runner] executeScript failed:", error);
+    console.error("[TypingerZ Cheat Runner] executeScript failed:", error);
   }
 }
 
