@@ -2,8 +2,11 @@
   "use strict";
 
   const TARGET_ID = "mondaifield";
+  const DELAY_MS = 10;
+
   let lastTypedText = "";
   let observerStarted = false;
+  let timer = null;
 
   function dispatchKey(type, key, code) {
     const event = new KeyboardEvent(type, {
@@ -38,25 +41,33 @@
     return { key: character, code: "" };
   }
 
-  function tyTex(text) {
+  function typeText(text) {
     if (!text || text === lastTypedText) return;
     lastTypedText = text;
 
-    for (const character of text.split("")) {
-      const { key, code } = getKeyInfo(character);
+    for (const char of text) {
+      const { key, code } = getKeyInfo(char);
       dispatchKey("keydown", key, code);
       dispatchKey("keyup", key, code);
     }
   }
 
-  function handMond() {
-    const target = document.getElementById(TARGET_ID);
-    if (!target) return;
+  function scheduleTyping(text) {
+    if (timer) clearTimeout(timer);
 
-    const textContent = target.textContent || "";
-    if (!textContent.trim()) return;
+    timer = setTimeout(() => {
+      typeText(text);
+    }, DELAY_MS);
+  }
 
-    tyTex(textContent);
+  function handleTarget() {
+    const el = document.getElementById(TARGET_ID);
+    if (!el) return;
+
+    const text = el.textContent || "";
+    if (!text.trim()) return;
+
+    scheduleTyping(text);
   }
 
   function startObserver() {
@@ -64,14 +75,14 @@
     observerStarted = true;
 
     const observer = new MutationObserver(() => {
-      handMond();
+      handleTarget();
     });
 
     const attach = () => {
-      const target = document.getElementById(TARGET_ID);
-      if (!target) return false;
+      const el = document.getElementById(TARGET_ID);
+      if (!el) return false;
 
-      observer.observe(target, {
+      observer.observe(el, {
         childList: true,
         subtree: true,
         characterData: true,
@@ -81,14 +92,14 @@
     };
 
     if (attach()) {
-      handMond();
+      handleTarget();
       return;
     }
 
     const bootObserver = new MutationObserver(() => {
       if (attach()) {
         bootObserver.disconnect();
-        handMond();
+        handleTarget();
       }
     });
 
