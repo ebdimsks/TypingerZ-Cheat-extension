@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Typingerz JS Runner",
+  "version": "1.1.0",
+  "description": "typingerz.com で指定した JavaScript を自動実行します。",
+  "permissions": [
+    "storage",
+    "scripting",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://typingerz.com/*",
+    "https://*.typingerz.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Typingerz JS Runner",
+    "default_icon": {
+      "16": "icons/enabled-16.png",
+      "32": "icons/enabled-32.png",
+      "48": "icons/enabled-48.png",
+      "128": "icons/enabled-128.png"
+    }
+  }
+}
