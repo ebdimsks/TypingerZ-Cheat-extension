@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Typingerz Cheat Runner",
   "version": "1.0.0",
-  "description": "typingerz.com でチート行為をします。",
+  "description": "typingerz.com でチートをします",
   "permissions": [
     "storage",
     "scripting",
@@ -15,7 +15,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "options_page": "options.html",
   "action": {
     "default_title": "Typingerz Cheat Runner",
     "default_icon": {
