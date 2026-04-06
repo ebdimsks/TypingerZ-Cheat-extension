@@ -2,7 +2,7 @@
   "use strict";
 
   const TARGET_ID = "mondaifield";
-  const DEBOUNCE_MS = 10;
+  const DEBOUNCE_MS = 5;
 
   const state = {
     observer: null,
