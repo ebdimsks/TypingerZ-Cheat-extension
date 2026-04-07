@@ -1,16 +1,30 @@
 (() => {
   "use strict";
 
-  const TARGET_ID = "mondaifield";
-  const DEBOUNCE_MS = 5;
+  const CONFIG = {
+    targetId: "mondaifield",
+    debounceMinMs: 2,
+    debounceMaxMs: 10,
+  };
 
   const state = {
-    observer: null,
+    targetObserver: null,
     bootObserver: null,
     timerId: null,
     started: false,
     lastEmittedText: "",
   };
+
+  const normalizeText = (text) => String(text ?? "").replace(/\r\n/g, "\n");
+
+  const getRandomIntInclusive = (min, max) => {
+    const lower = Math.ceil(min);
+    const upper = Math.floor(max);
+    return Math.floor(Math.random() * (upper - lower + 1)) + lower;
+  };
+
+  const getDebounceMs = () =>
+    getRandomIntInclusive(CONFIG.debounceMinMs, CONFIG.debounceMaxMs);
 
   function dispatchKey(type, key, code) {
     const event = new KeyboardEvent(type, {
@@ -32,17 +46,16 @@
   function getKeyInfo(character) {
     if (character === " ") return { key: " ", code: "Space" };
     if (character === "\n") return { key: "Enter", code: "Enter" };
+
     if (/^[a-z]$/i.test(character)) {
       return { key: character, code: `Key${character.toUpperCase()}` };
     }
+
     if (/^[0-9]$/.test(character)) {
       return { key: character, code: `Digit${character}` };
     }
-    return { key: character, code: "" };
-  }
 
-  function normalizeText(text) {
-    return String(text ?? "").replace(/\r\n/g, "\n");
+    return { key: character, code: "" };
   }
 
   function typeText(text) {
@@ -53,26 +66,32 @@
 
     state.lastEmittedText = normalized;
 
-    for (const char of normalized) {
-      const { key, code } = getKeyInfo(char);
+    for (const character of normalized) {
+      const { key, code } = getKeyInfo(character);
       dispatchKey("keydown", key, code);
       dispatchKey("keyup", key, code);
     }
   }
 
-  function scheduleTyping(text) {
+  function clearTimer() {
     if (state.timerId !== null) {
       clearTimeout(state.timerId);
+      state.timerId = null;
     }
+  }
 
+  function scheduleTyping(text) {
+    clearTimer();
+
+    const debounceMs = getDebounceMs();
     state.timerId = setTimeout(() => {
       state.timerId = null;
       typeText(text);
-    }, DEBOUNCE_MS);
+    }, debounceMs);
   }
 
   function getTargetElement() {
-    return document.getElementById(TARGET_ID);
+    return document.getElementById(CONFIG.targetId);
   }
 
   function handleTargetChange() {
@@ -86,14 +105,11 @@
   }
 
   function disconnectObservers() {
-    if (state.timerId !== null) {
-      clearTimeout(state.timerId);
-      state.timerId = null;
-    }
+    clearTimer();
 
-    if (state.observer) {
-      state.observer.disconnect();
-      state.observer = null;
+    if (state.targetObserver) {
+      state.targetObserver.disconnect();
+      state.targetObserver = null;
     }
 
     if (state.bootObserver) {
@@ -103,13 +119,10 @@
   }
 
   function attachTargetObserver(el) {
-    if (state.observer) return;
+    if (state.targetObserver) return;
 
-    state.observer = new MutationObserver(() => {
-      handleTargetChange();
-    });
-
-    state.observer.observe(el, {
+    state.targetObserver = new MutationObserver(handleTargetChange);
+    state.targetObserver.observe(el, {
       childList: true,
       subtree: true,
       characterData: true,
@@ -132,6 +145,7 @@
       if (!el) return;
 
       attachTargetObserver(el);
+
       if (state.bootObserver) {
         state.bootObserver.disconnect();
         state.bootObserver = null;
