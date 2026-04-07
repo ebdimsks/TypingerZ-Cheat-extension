@@ -4,7 +4,7 @@
   const CONFIG = {
     targetId: "mondaifield",
     debounceMinMs: 2,
-    debounceMaxMs: 10,
+    debounceMaxMs: 50,
   };
 
   const state = {
